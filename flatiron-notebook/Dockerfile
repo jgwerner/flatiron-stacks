@@ -1,6 +1,6 @@
 FROM jupyter/base-notebook:6d42503c684f AS base
 
-FROM illumidesk/base-notebook:latest
+FROM illumidesk/flatiron-base:latest
 
 # add group id since its not included by repo2docker but we need it
 # to run fix-permissions
@@ -41,8 +41,6 @@ RUN chmod a+rx /usr/local/bin/before-notebook.d/enable_extensions.sh
 RUN mkdir -p /etc/jupyter
 COPY jupyter_notebook_config.py /etc/jupyter/
 COPY global_nbgrader_config.py /etc/jupyter/nbgrader_config.py
-
-RUN curl -fsSL https://code-server.dev/install.sh | sh
 
 # reinstall everything in the requirements.txt file but ignore terminado to avoid disutils error
 # https://github.com/pypa/pip/issues/5247

@@ -1,0 +1,81 @@
+# Any commit to main branch re-builds images, re-runs tests, and pushes SHA tags to DockerHub
+name: Build
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'LICENSE'
+      - 'README.md'
+      - 'Makefile'
+
+env:
+  DOCKER_ORG: illumidesk
+  GITHUB_SHA: ${{ github.sha }}
+  GITHUB_REF: ${{ github.ref }}
+
+jobs:
+  base-image:
+    env:
+      IMAGE: flatiron-image
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set Job Environment Variables
+      run: |
+        CALVER="$( date -u '+%Y.%m.%d' )"
+        SHA7="${GITHUB_SHA::7}"
+        DOCKER_TAG=$SHA7
+        IMAGE_SPEC="${DOCKER_ORG}/${{ env.IMAGE }}:${DOCKER_TAG}"
+        echo "::set-env name=DOCKER_TAG::${DOCKER_TAG}"
+        echo "::set-env name=IMAGE_SPEC::${IMAGE_SPEC}"
+
+    - name: Build and Publish to DockerHub
+      uses: elgohr/Publish-Docker-Github-Action@2.12
+      with:
+        name: ${{env.DOCKER_ORG}}/${{ env.IMAGE }}
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        workdir: ${{ env.IMAGE }}
+        tags: "main, ${{env.DOCKER_TAG}}"
+
+
+  matrix-build:
+    needs: base-image
+    strategy:
+      fail-fast: false
+      matrix:
+        IMAGE: [flatiron-base, flatiron-notebook, flatiron-grader]
+    name: ${{ matrix.IMAGE }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Set Job Environment Variables
+      run: |
+        CALVER="$( date -u '+%Y.%m.%d' )"
+        SHA7="${GITHUB_SHA::7}"
+        DOCKER_TAG=$SHA7
+        IMAGE_SPEC="${DOCKER_ORG}/${{ matrix.IMAGE }}:${DOCKER_TAG}"
+        echo "::set-env name=DOCKER_TAG::${DOCKER_TAG}"
+        echo "::set-env name=IMAGE_SPEC::${IMAGE_SPEC}"
+
+    - name: Build and Publish to DockerHub
+      uses: elgohr/Publish-Docker-Github-Action@2.12
+      with:
+        name: ${{env.DOCKER_ORG}}/${{ matrix.IMAGE }}
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        workdir: ${{ matrix.IMAGE }}
+        tags: "main, ${{env.DOCKER_TAG}}"
+
+    - name: Export Full Conda Environment
+      run: |
+        docker run ${DOCKER_ORG}/${{ matrix.IMAGE }}:main conda list --export
+
+    - name: Test Image
+      run: |
+        make test

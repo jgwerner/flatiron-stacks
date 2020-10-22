@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.com/IllumiDesk/docker-stacks.svg?branch=main)](https://travis-ci.com/IllumiDesk/docker-stacks)
+[![Build Status](https://travis-ci.com/IllumiDesk/flatiron-stacks.svg?branch=main)](https://travis-ci.com/IllumiDesk/flatiron-stacks)
 
-# IllumiDesk docker-stacks
+# Flatiron Stacks
 
-Dockerfiles and related assets for IllumiDesk's workspace images.
+Dockerfiles and related assets for IllumiDesk's workspace images for the `Flatiron School`.
 
 ## Pre Requisits
 
@@ -23,7 +23,7 @@ make build-all
 Running the image standalone is helpful for testing:
 
 ```bash
-docker run -p 8888:8888 illumidesk/illumidesk-notebook:latest
+docker run -p 8888:8888 illumidesk/flatiron-notebook:latest
 ```
 
 > Refer to [docker's documentation](https://docs.docker.com/engine/reference/run/) for additional `docker run ...` options.
@@ -32,35 +32,16 @@ docker run -p 8888:8888 illumidesk/illumidesk-notebook:latest
 
 | Image | DockerHub Link |
 | --- | --- |
-| illumidesk/base-notebook | [![Docker Image](https://img.shields.io/docker/automated/illumidesk/base-notebook)](https://img.shields.io/docker/automated/illumidesk/base-notebook?label=base-notebook) |
-| illumidesk/grader-notebook | [![Docker Image](https://img.shields.io/docker/automated/illumidesk/grader-notebook)](https://hub.docker.com/repository/docker/illumidesk/base-notebook?label=grader-notebook) |
-| illumidesk/illumidesk-notebook | [![Docker Image](https://img.shields.io/docker/automated/illumidesk/instructor-notebook)](https://hub.docker.com/repository/docker/illumidesk/illumidesk-notebook?label=illumidesk-notebook) |
-
-### Images prepared for Learning Tools Interoperability (LTI) Roles
-
-- **Base Jupyter Notebook**: based on the [`jupyter/base-notebook`](https://github.com/jupyter/docker-stacks/tree/master/datascience-notebook) plus:
-
-  - Java kernel using JRE based on Open JDK 11
-  - Julia, Python, and R packages installed with [repo2docker-based conventions](https://repo2docker.readthedocs.io/en/latest/)
-  - C++ kernels (11, 14, and 17) with Xeus installed with `conda`.
-  - Jupyter Notebook configuration to support iFrames.
-  - `nbgrader` extensions enabled by LTI role (`learner` and `instructor`)
-  - Jupyter Classic and JupyterLab launchers for `jupyter-server-proxy` compatible services.
-  - VS Code compatible IDE with `code-server` available with the `/vscode` path.
-  - RStudio and Shiny servers available with the `/rstudio` and `/shiny` paths, respectively.
-
-### Image Layers
-
-The IllumiDesk docker layers for workspace types are illustrated below:
-
-![Jupyter notebook workspace images](/img/docker_stacks_v2.png)
+| illumidesk/flatiron-base | [![Docker Image](https://img.shields.io/docker/automated/flatiron/flatiron-base)](https://img.shields.io/docker/automated/illumidesk/flatiron-base?label=flatiron-base) |
+| illumidesk/flatiron-notebook | [![Docker Image](https://img.shields.io/docker/automated/flatiron/flatiron-notebook)](https://hub.docker.com/repository/docker/illumidesk/flatiron-notebook?label=flatiron-notebook) |
+| illumidesk/flatiron-grader | [![Docker Image](https://img.shields.io/docker/automated/flatiron/flatiron-grader)](https://hub.docker.com/repository/docker/illumidesk/flatiron-grader?label=flatiron-grader) |
 
 ## Build Mechanism
 
 1. Build and tag the base image or all images at once. Use the `TAG` argument to add your custom tag. The `TAG` argument defaults to `latest` if not specified:
 
 ```bash
-    make build/base-notebook TAG=mytag
+    make build/flatiron-base TAG=mytag
 ```
 
 The base image uses the standard `repo2docker` convention to set dependencies. [Refer to this project's documentaiton](https://repo2docker.readthedocs.io/en/latest/) for additional configuration options.
@@ -69,9 +50,9 @@ The base image uses the standard `repo2docker` convention to set dependencies. [
 2. (Optional) Use the base image from step 1 above as a base image for an image compatible with the illumidesk stack.
 
 ```
-FROM jupyter/base-notebook:latest AS base
+FROM jupyter/flatiron-base:latest AS base
 
-FROM illumidesk/base-notebook:latest
+FROM illumidesk/flatiron-base:latest
 
 USER root
 
@@ -88,10 +69,17 @@ USER "${NB_USER}"
 
 ```
 
-2. Push images to DockerHub
+2. (Optional) Push images to DockerHub
+
+This step requires creating an Organization account in DockerHub or other docker image compatible registry. The `docker push ...`
+command will push the image to the DockerHub registry by default. Please refer to the official Docker documentation if you would
+like to push another registry.
+
+For example, assuming the DockerHub organization is `illumidesk` and the image name is built as `flatiron-notebook`, then the full
+namespace for the image would be `illumidesk/flatiron-notebook:latest`. Then, you should push the image to the DockerHub registry like so:
 
 ```bash
-docker push organization/custom-image
+docker push illumidesk/flatiron-notebook:mytag
 ```
 
 ## Development and Testing
@@ -120,6 +108,3 @@ These images are based on the `jupyter/docker-stacks` images. [Refer to their do
 
 - [JupyterHub repo2docker](https://repo2docker.readthedocs.io/en/latest/)
 - [jupyter/docker-stacks images](https://github.com/jupyter/docker-stacks)
-- [code-server](https://github.com/cdr/code-server)
-
-RStudio and Shiny are trademarks of RStudio, PBC. Refer to RStudio's trademark guidelines for more information.
