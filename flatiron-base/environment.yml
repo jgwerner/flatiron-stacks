@@ -234,6 +234,7 @@ dependencies:
   - terminado=0.9.1
   - testpath=0.4.4
   - threadpoolctl=2.1.0
+  - tini=0.18.0
   - tk=8.6.10
   - tornado=6.0.4
   - tqdm=4.50.2

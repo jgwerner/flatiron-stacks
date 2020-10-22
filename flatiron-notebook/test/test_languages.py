@@ -33,4 +33,4 @@ def test_invalid_cmd():
     with pytest.raises(ContainerError):
         LOGGER.info('Test an invalid command ...')
         client = docker.from_env()
-        client.containers.run('illumidesk/base-notebook', 'foo --version')
+        client.containers.run('illumidesk/flatiron-notebook', 'foo --version')
