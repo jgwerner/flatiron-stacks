@@ -1,0 +1,2 @@
+https://github.com/IllumiDesk/nbgrader/archive/v0.64.2.zip
+jupyter-server-proxy==1.5.0

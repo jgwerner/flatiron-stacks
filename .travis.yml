@@ -16,7 +16,7 @@ jobs:
       script:
         - set -e
         - make build/base-notebook
-        - travis_wait 60 make build/illumidesk-notebook
+        - travis_wait 30 make build/flatiron-notebook
         - make test
 
 stages:

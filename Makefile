@@ -12,8 +12,9 @@ VENV_ACTIVATE=. ${VENV_BIN}/activate
 PYTHON=${VENV_BIN}/python3
 
 # Need to list the images in build dependency order
-ALL_STACKS:=base-notebook \
-	illumidesk-notebook
+ALL_STACKS:=flatiron-base \
+	flatiron-notebook \
+	flatiron-grader
 
 ALL_IMAGES:=$(ALL_STACKS)
 
@@ -25,7 +26,7 @@ help:
 # http://github.com/jupyter/docker-stacks
 	@echo "illumidesk/docker-stacks"
 	@echo "====================="
-	@echo "Replace % with a stack directory name (e.g., make build/base-notebook)"
+	@echo "Replace % with a stack directory name (e.g., make build/flatiron-base)"
 	@echo
 	@grep -E '^[a-zA-Z0-9_%/-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
