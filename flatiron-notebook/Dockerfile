@@ -1,55 +1,33 @@
-FROM jupyter/base-notebook:6d42503c684f AS base
-
-FROM illumidesk/flatiron-base:latest
-
-# add group id since its not included by repo2docker but we need it
-# to run fix-permissions
-ENV NB_USER=jovyan
-ENV NB_UID=1000
-ENV NB_GID=100
-ENV HOME="/home/${NB_USER}"
+FROM jupyter/scipy-notebook:45bfe5a474fa AS base
 
 USER root
 
-# first config location checked by jupyter --paths
-RUN mkdir -p /etc/jupyter
-
-# copy files from base image
-# start* includes: start-notebook.sh, start-singleuser.sh, and start.sh
-COPY --from=base /usr/local/bin/start-* /usr/local/bin/
-COPY --from=base /usr/local/bin/fix-permissions /usr/local/bin/
-
-# copy upstream config and rename it to base config. custom config loads base config
-# with additional settings
-COPY --from=base /etc/jupyter/jupyter_notebook_config.py /etc/jupyter/jupyter_notebook_config_base.py
-
-# update permissions
-RUN chmod a+rx /usr/local/bin/fix-permissions
-RUN chmod +rx /usr/local/bin/start*
-
-# start.sh has the option of running scripts as hooks
-# https://jupyter-docker-stacks.readthedocs.io/en/latest/using/common.html#startup-hooks
-RUN mkdir -p /usr/local/bin/start-notebook.d \
- && mkdir -p /usr/local/bin/before-notebook.d
-
-COPY enable_extensions.sh /usr/local/bin/before-notebook.d/
-RUN chmod a+rx /usr/local/bin/before-notebook.d/enable_extensions.sh
-
-# copy configs, we use our own to provide a base jhub config and an additional
-# default config that loads/appends from the base config. this is usefule in case
-# we need to add other images that default to other paths, etc.
-RUN mkdir -p /etc/jupyter
+# copy configs
+RUN cp /etc/jupyter/jupyter_notebook_config.py /etc/jupyter/jupyter_notebook_config_base.py
 COPY jupyter_notebook_config.py /etc/jupyter/
 COPY global_nbgrader_config.py /etc/jupyter/nbgrader_config.py
 
-# reinstall everything in the requirements.txt file but ignore terminado to avoid disutils error
-# https://github.com/pypa/pip/issues/5247
+USER "${NB_USER}"
+
+# install packages with mamba to improve build times
+WORKDIR /tmp
+COPY environment.yml /tmp/environment.yml
 COPY requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --no-cache --force -r /tmp/requirements.txt --ignore-installed \
-    terminado \
+
+# install mamba, then install the rest of the packages with mamba
+RUN conda install mamba -c conda-forge \
  && fix-permissions "${CONDA_DIR}" \
  && fix-permissions "${HOME}"
 
+RUN mamba env update --prefix ./env --file environment.yml \
+ && fix-permissions "${CONDA_DIR}" \
+ && fix-permissions "${HOME}"
+
+RUN pip install -r /tmp/requirements.txt \
+ && fix-permissions "${CONDA_DIR}" \
+ && fix-permissions "${HOME}"
+
+# update jupyterlab
 RUN jupyter serverextension enable --sys-prefix --py jupyter_server_proxy \
  && jupyter labextension install @jupyterlab/server-proxy@^2.1.1 \
  && jupyter lab build -y \
@@ -60,34 +38,6 @@ RUN jupyter serverextension enable --sys-prefix --py jupyter_server_proxy \
  && fix-permissions "${CONDA_DIR}" \
  && fix-permissions "${HOME}"
 
-# Install facets which does not have a pip or conda package at the moment
-WORKDIR /tmp
-RUN git clone https://github.com/PAIR-code/facets.git \
- && jupyter nbextension install facets/facets-dist/ --sys-prefix \
- && rm -Rf "/tmp/*" \
- && fix-permissions "${CONDA_DIR}" \
- && fix-permissions "${HOME}"
-
-# Import matplotlib the first time to build the font cache.
-ENV XDG_CACHE_HOME="${HOME}/.cache/"
-
-RUN MPLBACKEND=Agg python -c "import matplotlib.pyplot" && \
-    fix-permissions "${HOME}"
-
-# fix permissions for configs, conda, and home as root
-RUN fix-permissions /etc/jupyter/ \
- && fix-permissions "${CONDA_DIR}" \
- && fix-permissions "${HOME}"
-
-RUN pip uninstall nbextensions_configurator \
- && python3 -m pip install https://github.com/IllumiDesk/nbgrader/archive/v0.6.3.zip
-
-# create symlink to jupyterhub-singleuser to handle run/spawn when setting user to root(0)
-RUN ln -s "${CONDA_DIR}/envs/notebook/bin/jupyter" /usr/local/bin/ \
- && ln -s "${CONDA_DIR}/envs/notebook/bin/jupyterhub-singleuser" /usr/local/bin/
-
-USER "${NB_UID}"
-
 # install nbgrader and then disable all extensions by default
 RUN jupyter nbextension install --symlink --sys-prefix --py nbgrader --overwrite \
  && jupyter nbextension disable --sys-prefix --py nbgrader \
@@ -97,21 +47,21 @@ RUN jupyter nbextension install --symlink --sys-prefix --py nbgrader --overwrite
 RUN jupyter nbextension enable --sys-prefix validate_assignment/main --section=notebook \
  && jupyter serverextension enable --sys-prefix nbgrader.server_extensions.validate_assignment
 
-# the rsession-proxy is duplicated, so uninstall the original version from repo2docker
-RUN pip uninstall -y jupyter-rsession-proxy
+# everyone gets the assignment extension
+RUN jupyter serverextension enable --sys-prefix nbgrader.server_extensions.assignment_list \
+ && jupyter nbextension enable --sys-prefix assignment_list/main --section=tree
 
-# re install nbresuse
-RUN conda install -c conda-forge nbresuse=0.3.*
+# widgets
+RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix \
+ && fix-permissions "${CONDA_DIR}" \
+ && fix-permissions "${HOME}"
+
+# update permissions as root
+USER root
+RUN fix-permissions /etc/jupyter/ \
+ && fix-permissions "${CONDA_DIR}" \
+ && fix-permissions "${HOME}"
+
+USER "${NB_USER}"
 
 WORKDIR "${HOME}"
-
-EXPOSE 8888
-
-# Configure containe startup, as the standard repo2docker-based
-# image uses the repo2docker entrypoint. establishes consistency with
-# jupyter/docker-stacks images
-ENTRYPOINT ["tini", "-g", "--"]
-
-# allows for local docker-run commands. will run start-singleuser if
-# spawned with jupyterhub
-CMD ["start-notebook.sh"]

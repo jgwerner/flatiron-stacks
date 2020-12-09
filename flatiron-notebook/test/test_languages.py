@@ -12,7 +12,7 @@ LOGGER = logging.getLogger(__name__)
 @pytest.mark.parametrize(
     'language,version_output',
     [
-        ('python', ['Python', '3.8.5\n']),
+        ('python', ['Python', '3.8.6\n']),
     ],
 )
 def test_languages(language, version_output):
@@ -21,7 +21,7 @@ def test_languages(language, version_output):
     """
     LOGGER.info(f'Test that language {language} is correctly installed ...')
     client = docker.from_env()
-    output = client.containers.run('illumidesk/flatiron-base:latest', f'{language} --version')
+    output = client.containers.run('illumidesk/flatiron-notebook:latest', f'{language} --version')
     output_decoded = output.decode('utf-8').split(' ')
     assert output_decoded[0:3] == version_output
     LOGGER.info(f'Output from command: {output_decoded[0:3]}')
@@ -33,4 +33,4 @@ def test_invalid_cmd():
     with pytest.raises(ContainerError):
         LOGGER.info('Test an invalid command ...')
         client = docker.from_env()
-        client.containers.run('illumidesk/base-notebook', 'foo --version')
+        client.containers.run('illumidesk/flatiron-notebook', 'foo --version')

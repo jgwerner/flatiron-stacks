@@ -12,8 +12,7 @@ VENV_ACTIVATE=. ${VENV_BIN}/activate
 PYTHON=${VENV_BIN}/python3
 
 # Need to list the images in build dependency order
-ALL_STACKS:=flatiron-base \
-	flatiron-notebook \
+ALL_STACKS:=flatiron-notebook \
 	flatiron-grader
 
 ALL_IMAGES:=$(ALL_STACKS)
@@ -24,20 +23,27 @@ HADOLINT="${HOME}/hadolint"
 help:
 # http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 # http://github.com/jupyter/docker-stacks
-	@echo "illumidesk/docker-stacks"
+	@echo "illumidesk/flatiron-stacks"
 	@echo "====================="
-	@echo "Replace % with a stack directory name (e.g., make build/flatiron-base)"
+	@echo "Replace % with a stack directory name (e.g., make build/flatiron-notebook)"
 	@echo
 	@grep -E '^[a-zA-Z0-9_%/-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 build/%: DARGS?=
 build/%: TAG?=
 build/%: ## build the latest image for a stack
-	${VENV_BIN}/jupyter-repo2docker --no-run --user-id 1000 --user-name jovyan --image-name $(OWNER)/$(notdir $@):$(TAG) ./$(notdir $@) .
+	@docker build -t $(OWNER)/$(notdir $@):$(TAG) ./$(notdir $@)/.
 	@echo -n "Built image size: "
 	@docker images $(OWNER)/$(notdir $@):$(TAG) --format "{{.Size}}"
 
 build-all: $(foreach I,$(ALL_IMAGES), build/$(I)) ## build all stacks
+
+push/%: DARGS?=
+push/%: TAG?=
+push/%: ## push stack image
+	@docker push $(OWNER)/$(notdir $@):$(TAG)
+
+push-all: $(foreach I,$(ALL_IMAGES), push/$(I)) ## push all stacks
 
 clean-all: ## clean all docker containers
 	@docker rm -f $(docker ps -aq)
